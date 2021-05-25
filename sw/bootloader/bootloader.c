@@ -257,7 +257,7 @@ int main(void) {
   // ------------------------------------------------
   // Show bootloader intro and system info
   // ------------------------------------------------
-  neorv32_uart_print("\n\n\n\n<< NEORV32 Bootloader >>\n\n"
+  neorv32_uart_print("\n\n\n\n<< Josh Loo Bootloader >>\n\n"
                      "BLDV: "__DATE__"\nHWV:  ");
   print_hex_word(neorv32_cpu_csr_read(CSR_MIMPID));
   neorv32_uart_print("\nCLK:  ");
