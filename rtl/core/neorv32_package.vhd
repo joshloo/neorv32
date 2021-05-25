@@ -1862,7 +1862,9 @@ package neorv32_package is
       clk_i  : in  std_ulogic; -- global clock line
       addr_i : in  std_ulogic_vector(31 downto 0); -- address
       rden_i : in  std_ulogic; -- read enable
+      wren_i : in  std_ulogic; -- write enable
       data_o : out std_ulogic_vector(31 downto 0); -- data out
+      data_i : in std_ulogic_vector(31 downto 0); -- data in
       ack_o  : out std_ulogic  -- transfer acknowledge
     );
   end component;

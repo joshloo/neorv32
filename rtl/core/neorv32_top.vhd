@@ -1322,7 +1322,9 @@ begin
     clk_i  => clk_i,         -- global clock line
     addr_i => p_bus.addr,    -- address
     rden_i => io_rden,       -- read enable
+    wren_i => io_wren,       -- write enable
     data_o => sysinfo_rdata, -- data out
+    data_i => p_bus.wdata,   -- data in
     ack_o  => sysinfo_ack    -- transfer acknowledge
   );
 
