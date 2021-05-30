@@ -47,7 +47,7 @@ use neorv32.neorv32_package.all;
 entity neorv32_cfs is
   generic (
     CFS_CONFIG   : std_ulogic_vector(31 downto 0); -- custom CFS configuration generic
-    CFS_IN_SIZE  : positive := 32; -- size of CFS input conduit in bits
+    CFS_IN_SIZE  : positive := 512; -- size of CFS input conduit in bits , this is now used as SHA5 result
     CFS_OUT_SIZE : positive := 32  -- size of CFS output conduit in bits
   );
   port (
@@ -87,7 +87,7 @@ architecture neorv32_cfs_rtl of neorv32_cfs is
   signal rden   : std_ulogic; -- read enable
 
   -- default CFS interface registers --
-  type cfs_regs_t is array (0 to 3) of std_ulogic_vector(31 downto 0); -- just implement 4 registers for this example
+  type cfs_regs_t is array (0 to 20) of std_ulogic_vector(31 downto 0); -- extend to 20 members
   signal cfs_reg_wr : cfs_regs_t; -- interface registers for WRITE accesses
   signal cfs_reg_rd : cfs_regs_t; -- interface registers for READ accesses
 
@@ -218,6 +218,22 @@ begin
             when cfs_reg1_addr_c => cfs_reg_wr(1) <= data_i; -- for example: data in/out fifo
             when cfs_reg2_addr_c => cfs_reg_wr(2) <= data_i; -- for example: command fifo
             when cfs_reg3_addr_c => cfs_reg_wr(3) <= data_i; -- for example: status register
+            when cfs_reg4_addr_c => cfs_reg_wr(4) <= data_i; -- for example: control register
+            when cfs_reg5_addr_c => cfs_reg_wr(5) <= data_i; -- for example: data in/out fifo
+            when cfs_reg6_addr_c => cfs_reg_wr(6) <= data_i; -- for example: command fifo
+            when cfs_reg7_addr_c => cfs_reg_wr(7) <= data_i; -- for example: status register
+            when cfs_reg8_addr_c => cfs_reg_wr(8) <= data_i; -- for example: control register
+            when cfs_reg9_addr_c => cfs_reg_wr(9) <= data_i; -- for example: data in/out fifo
+            when cfs_reg10_addr_c => cfs_reg_wr(10) <= data_i; -- for example: command fifo
+            when cfs_reg11_addr_c => cfs_reg_wr(11) <= data_i; -- for example: command fifo
+            when cfs_reg12_addr_c => cfs_reg_wr(12) <= data_i; -- for example: status register
+            when cfs_reg13_addr_c => cfs_reg_wr(13) <= data_i; -- for example: control register
+            when cfs_reg14_addr_c => cfs_reg_wr(14) <= data_i; -- for example: data in/out fifo
+            when cfs_reg15_addr_c => cfs_reg_wr(15) <= data_i; -- for example: command fifo
+            when cfs_reg16_addr_c => cfs_reg_wr(16) <= data_i; -- for example: status register
+            when cfs_reg17_addr_c => cfs_reg_wr(17) <= data_i; -- for example: control register
+            when cfs_reg18_addr_c => cfs_reg_wr(18) <= data_i; -- for example: data in/out fifo
+            when cfs_reg19_addr_c => cfs_reg_wr(19) <= data_i; -- for example: command fifo
             when others          => NULL;
           end case;
         end if;
@@ -231,6 +247,22 @@ begin
           when cfs_reg1_addr_c => data_o <= cfs_reg_rd(1);
           when cfs_reg2_addr_c => data_o <= cfs_reg_rd(2);
           when cfs_reg3_addr_c => data_o <= cfs_reg_rd(3);
+          when cfs_reg4_addr_c => data_o <= cfs_reg_rd(4);
+          when cfs_reg5_addr_c => data_o <= cfs_reg_rd(5);
+          when cfs_reg6_addr_c => data_o <= cfs_reg_rd(6);
+          when cfs_reg7_addr_c => data_o <= cfs_reg_rd(7);
+          when cfs_reg8_addr_c => data_o <= cfs_reg_rd(8);
+          when cfs_reg9_addr_c => data_o <= cfs_reg_rd(9);
+          when cfs_reg10_addr_c => data_o <= cfs_reg_rd(10);
+          when cfs_reg11_addr_c => data_o <= cfs_reg_rd(11);
+          when cfs_reg12_addr_c => data_o <= cfs_reg_rd(12);
+          when cfs_reg13_addr_c => data_o <= cfs_reg_rd(13);
+          when cfs_reg14_addr_c => data_o <= cfs_reg_rd(14);
+          when cfs_reg15_addr_c => data_o <= cfs_reg_rd(15);
+          when cfs_reg16_addr_c => data_o <= cfs_reg_rd(16);
+          when cfs_reg17_addr_c => data_o <= cfs_reg_rd(17);
+          when cfs_reg18_addr_c => data_o <= cfs_reg_rd(18);
+          when cfs_reg19_addr_c => data_o <= cfs_reg_rd(19);
           when others          => data_o <= (others => '0'); -- the remaining registers are not implemented and will read as zero
         end case;
       end if;
@@ -241,14 +273,29 @@ begin
   -- CFS Function Core ----------------------------------------------------------------------
   -- -------------------------------------------------------------------------------------------
   -- This is where the actual functionality can be implemented.
-  -- In this example we are just implementing four r/w registers that invert any value written to them.
 
-  cfs_core: process(cfs_reg_wr)
+  cfs_core: process(cfs_reg_wr, cfs_in_i)
   begin
-    cfs_reg_rd(0) <= cfs_reg_wr(0);
+    cfs_reg_rd(0) <= cfs_reg_wr(0); -- using first 4 as read back scratch pad, potentially use for boot checkpoints
     cfs_reg_rd(1) <= cfs_reg_wr(1);
     cfs_reg_rd(2) <= cfs_reg_wr(2);
-    cfs_reg_rd(3) <= cfs_reg_wr(0);
+    cfs_reg_rd(3) <= cfs_reg_wr(3);
+    cfs_reg_rd(4) <= cfs_in_i(31 downto 0);
+    cfs_reg_rd(5) <= cfs_in_i(63 downto 32);
+    cfs_reg_rd(6) <= cfs_in_i(95 downto 64);
+    cfs_reg_rd(7) <= cfs_in_i(127 downto 96);
+    cfs_reg_rd(8) <= cfs_in_i(159 downto 128);
+    cfs_reg_rd(9) <= cfs_in_i(191 downto 160);
+    cfs_reg_rd(10) <= cfs_in_i(223 downto 192);
+    cfs_reg_rd(11) <= cfs_in_i(255 downto 224);
+    cfs_reg_rd(12) <= cfs_in_i(287 downto 256);
+    cfs_reg_rd(13) <= cfs_in_i(319 downto 288);
+    cfs_reg_rd(14) <= cfs_in_i(351 downto 320);
+    cfs_reg_rd(15) <= cfs_in_i(383 downto 352);
+    cfs_reg_rd(16) <= cfs_in_i(415 downto 384);
+    cfs_reg_rd(17) <= cfs_in_i(447 downto 416);
+    cfs_reg_rd(18) <= cfs_in_i(479 downto 448);
+    cfs_reg_rd(19) <= cfs_in_i(511 downto 480);
   end process cfs_core;
 
 

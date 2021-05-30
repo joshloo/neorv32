@@ -113,7 +113,7 @@ entity neorv32_top is
     IO_TRNG_EN                   : boolean := false;  -- implement true random number generator (TRNG)?
     IO_CFS_EN                    : boolean := false;  -- implement custom functions subsystem (CFS)?
     IO_CFS_CONFIG                : std_ulogic_vector(31 downto 0) := x"00000000"; -- custom CFS configuration generic
-    IO_CFS_IN_SIZE               : positive := 32;    -- size of CFS input conduit in bits
+    IO_CFS_IN_SIZE               : positive := 512;    -- size of CFS input conduit in bits, used for SHA5
     IO_CFS_OUT_SIZE              : positive := 32;    -- size of CFS output conduit in bits
     IO_NCO_EN                    : boolean := true;   -- implement numerically-controlled oscillator (NCO)?
     IO_NEOLED_EN                 : boolean := true    -- implement NeoPixel-compatible smart LED interface (NEOLED)?
@@ -350,8 +350,12 @@ architecture neorv32_top_rtl of neorv32_top is
   signal cpu_sleep  : std_ulogic; -- CPU is in sleep mode when set
 
   -- SHA5 --
-  signal s5_finished   : std_logic;
+  signal s5_finished   : std_logic := '0';
+  signal s5_data_ready : std_logic := '0';
   signal s5_data_out   : std_logic_vector((WORD_SIZE * 8)-1 downto 0); --SHA-512 results in a 512-bit hash value
+  signal rom_block_1024_bits   : std_logic_vector(0 to (16 * WORD_SIZE)-1); -- ROM contents structured to 64 x 16 = 1024 bits to be fed into SHA-512 block
+  signal s5_counter    : natural := 0;
+  signal cfs_in        : std_ulogic_vector((WORD_SIZE * 8)-1  downto 0); -- custom CFS inputs conduit
 
 begin
 
@@ -619,6 +623,31 @@ begin
     cpu_i.err     <= i_cache.err;
   end generate;
 
+  -- Slice word_output to 1024 bits (32 x 32 bit content) blocks for processing --
+  read_rom: process(clk_i)
+  begin
+    if falling_edge(clk_i) then
+      -- logic for SHA5 block output to CFS block
+      if (s5_finished = '1') then
+        cfs_in <= std_ulogic_vector(s5_data_out);
+      else
+        cfs_in <= (others => '1');
+      end if;
+
+      -- logic for ROM block output to SHA5 block input
+      if s5_counter = 32 then
+        --rom_block_1024_bits <= bootloader_init_image(to_integer(unsigned(word_address(3 downto 0))));
+        rom_block_1024_bits <= (others => '1');
+        s5_data_ready       <= '1';
+        s5_counter          <= 0;
+      else
+        rom_block_1024_bits <= (others => '0');
+        s5_data_ready       <= '0';
+        s5_counter          <= s5_counter + 1;
+      end if;
+    end if;
+  end process read_rom;
+
    sha_512_core_inst : sha_512_core
    generic map (
       RESET_VALUE  => '0'
@@ -627,10 +656,12 @@ begin
        clk           => clk_i,
        rst           => sys_rstn,
        data_ready    => '1',
-       n_blocks      => 1,
-       msg_block_in  => (others => '0'),
-       finished     => s5_finished,
-       data_out     => s5_data_out
+       n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
+                                               -- boot_rom_size_c = 4*1024 bytes = 4096 bytes
+                                               -- Thus, block = 4096/128 = 32
+       msg_block_in  => rom_block_1024_bits,
+       finished     => s5_finished, -- finished will stay as finished, unless reset
+       data_out     => s5_data_out  -- output data will not be cleared, unless reset
    );
 
   -- CPU Bus Switch -------------------------------------------------------------------------
@@ -878,7 +909,7 @@ begin
     neorv32_cfs_inst: neorv32_cfs
     generic map (
       CFS_CONFIG   => IO_CFS_CONFIG,  -- custom CFS configuration generic 
-      CFS_IN_SIZE  => IO_CFS_IN_SIZE, -- size of CFS input conduit in bits
+      CFS_IN_SIZE  => WORD_SIZE * 8,  -- size of CFS input conduit in bits
       CFS_OUT_SIZE => IO_CFS_OUT_SIZE -- size of CFS output conduit in bits
     )
     port map (
@@ -900,7 +931,7 @@ begin
       irq_o       => cfs_irq,         -- interrupt request
       irq_ack_i   => cfs_irq_ack,     -- interrupt acknowledge
       -- custom io (conduit) --
-      cfs_in_i    => cfs_in_i,        -- custom inputs
+      cfs_in_i    => cfs_in,        -- custom inputs
       cfs_out_o   => cfs_out_o        -- custom outputs
     );
   end generate;
