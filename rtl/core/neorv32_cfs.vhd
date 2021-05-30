@@ -39,6 +39,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.std_logic_unsigned.all;
 
 library neorv32;
 use neorv32.neorv32_package.all;
@@ -244,10 +245,10 @@ begin
 
   cfs_core: process(cfs_reg_wr)
   begin
-    cfs_reg_rd(0) <= not cfs_reg_wr(0); -- just invert the written value
-    cfs_reg_rd(1) <= not cfs_reg_wr(1);
-    cfs_reg_rd(2) <= not cfs_reg_wr(2);
-    cfs_reg_rd(3) <= not cfs_reg_wr(3);
+    cfs_reg_rd(0) <= cfs_reg_wr(0);
+    cfs_reg_rd(1) <= cfs_reg_wr(1);
+    cfs_reg_rd(2) <= cfs_reg_wr(2);
+    cfs_reg_rd(3) <= cfs_reg_wr(0);
   end process cfs_core;
 
 

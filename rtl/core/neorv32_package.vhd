@@ -894,6 +894,42 @@ package neorv32_package is
   constant clk_div2048_c : natural := 6;
   constant clk_div4096_c : natural := 7;
 
+
+  -- SHA5 ------------------------------------------------------------------------
+  -- -------------------------------------------------------------------------------------------
+  constant WORD_SIZE : natural := 64; --SHA-512 uses 64-bit words
+  --array types for SHA-512
+  type K_DATA is array (0 to 79) of std_logic_vector(WORD_SIZE-1 downto 0);
+  type M_DATA is array (0 to 15) of std_logic_vector(WORD_SIZE-1 downto 0);
+  type H_DATA is array (0 to 7) of std_logic_vector(WORD_SIZE-1 downto 0);
+
+  --Message blocks, the padded message should be a multiple of 512 bits,
+  signal M : M_DATA;
+
+  --function definitions
+  function ROTR (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector;
+  function ROTL (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector;
+  function SHR (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector;
+  function CH (x : std_logic_vector(WORD_SIZE-1 downto 0);
+                  y : std_logic_vector(WORD_SIZE-1 downto 0);
+                  z : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+  function MAJ (x : std_logic_vector(WORD_SIZE-1 downto 0);
+                  y : std_logic_vector(WORD_SIZE-1 downto 0);
+                  z : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+  function SIGMA_UCASE_0 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+  function SIGMA_UCASE_1 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+  function SIGMA_LCASE_0 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+  function SIGMA_LCASE_1 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector;
+
   -- Component: NEORV32 Processor Top Entity ------------------------------------------------
   -- -------------------------------------------------------------------------------------------
   component neorv32_top
@@ -1962,6 +1998,23 @@ package neorv32_package is
     );
   end component;
 
+
+    component sha_512_core
+    generic(
+        RESET_VALUE : std_logic := '0'    --reset enable value
+    );
+    port(
+        clk : in std_logic;
+        rst : in std_logic;
+        data_ready : in std_logic;  --the edge of this signal triggers the capturing of input data and hashing it.
+        n_blocks : in natural; --N, the number of (padded) message blocks
+        msg_block_in : in std_logic_vector(0 to (16 * WORD_SIZE)-1);
+        --mode_in : in std_logic;
+        finished : out std_logic;
+        data_out : out std_logic_vector((WORD_SIZE * 8)-1 downto 0) --SHA-512 results in a 512-bit hash value
+    );
+    end component;
+
 end neorv32_package;
 
 package body neorv32_package is
@@ -2189,5 +2242,69 @@ package body neorv32_package is
     output_v(31 downto 24) := input(07 downto 00);
     return output_v;
   end function bswap32_f;
+
+  -- Function: SHA512 -----------------------------------------------------------------------
+  -- -------------------------------------------------------------------------------------------
+  function ROTR (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector is
+      --result : std_logic_vector(WORD_SIZE-1 downto 0);
+  begin
+      --signal result : std_logic_vector(WORD_SIZE-1 downto 0);
+      return (std_logic_vector(shift_right(unsigned(a), n))) or std_logic_vector((shift_left(unsigned(a), (WORD_SIZE-n))));
+  end function;
+
+  function ROTL (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector is
+      --result : std_logic_vector(WORD_SIZE-1 downto 0);
+  begin
+      --signal result : std_logic_vector(WORD_SIZE-1 downto 0);
+      return (std_logic_vector(shift_left(unsigned(a), n))) or std_logic_vector((shift_right(unsigned(a), (WORD_SIZE-n))));
+  end function;
+
+  function SHR (a : std_logic_vector(WORD_SIZE-1 downto 0); n : natural)
+                  return std_logic_vector is
+  begin
+      return std_logic_vector(shift_right(unsigned(a), n));
+  end function;
+
+  function CH (x : std_logic_vector(WORD_SIZE-1 downto 0);
+                  y : std_logic_vector(WORD_SIZE-1 downto 0);
+                  z : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return (x and y) xor (not(x) and z);
+  end function;
+
+  function MAJ (x : std_logic_vector(WORD_SIZE-1 downto 0);
+                  y : std_logic_vector(WORD_SIZE-1 downto 0);
+                  z : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return (x and y) xor (x and z) xor (y and z);
+  end function;
+
+  function SIGMA_UCASE_0 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return ROTR(x, 28) xor ROTR(x, 34) xor ROTR(x, 39);
+  end function;
+
+  function SIGMA_UCASE_1 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return ROTR(x, 14) xor ROTR(x, 18) xor ROTR(x, 41);
+  end function;
+
+  function SIGMA_LCASE_0 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return ROTR(x, 1) xor ROTR(x, 8) xor SHR(x, 7);
+  end function;
+
+  function SIGMA_LCASE_1 (x : std_logic_vector(WORD_SIZE-1 downto 0))
+                  return std_logic_vector is
+  begin
+      return ROTR(x, 19) xor ROTR(x, 61) xor SHR(x, 6);
+  end function;
 
 end neorv32_package;
