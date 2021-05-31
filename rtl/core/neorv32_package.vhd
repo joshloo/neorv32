@@ -108,7 +108,7 @@ package neorv32_package is
 
   -- Internal Bootloader ROM --
   constant boot_rom_base_c      : std_ulogic_vector(data_width_c-1 downto 0) := x"ffff0000"; -- bootloader base address, fixed!
-  constant boot_rom_size_c      : natural := 4*1024; -- module's address space in bytes
+  constant boot_rom_size_c      : natural := 8*1024; -- module's address space in bytes
   constant boot_rom_max_size_c  : natural := 32*1024; -- max module's address space in bytes, fixed!
 
   -- On-Chip Debugger: Debug Memory --
@@ -1550,7 +1550,7 @@ package neorv32_package is
   component neorv32_boot_rom
     generic (
       BOOTROM_BASE : std_ulogic_vector(31 downto 0) := x"FFFF0000"; -- boot ROM base address
-      BOOTROM_SIZE : natural := 4*1024  -- processor-internal boot ROM memory size in bytes
+      BOOTROM_SIZE : natural := 8*1024  -- processor-internal boot ROM memory size in bytes
     );
     port (
       clk_i  : in  std_ulogic; -- global clock line

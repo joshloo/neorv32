@@ -259,26 +259,54 @@ int main(void) {
   // ------------------------------------------------
   neorv32_uart_print("\n\n\n\n<< Josh Loo Bootloader >>\n\n"
                      "BLDV: "__DATE__"\nHWV:  ");
-  print_hex_word(neorv32_cpu_csr_read(CSR_MIMPID));
-  neorv32_uart_print("\nCLK:  ");
-  print_hex_word(SYSINFO_CLK);
-  neorv32_uart_print("\nUSER: ");
-  print_hex_word(SYSINFO_USER_CODE);
-  neorv32_uart_print("\nMISA: ");
-  print_hex_word(neorv32_cpu_csr_read(CSR_MISA));
-  neorv32_uart_print("\nZEXT: ");
-  print_hex_word(neorv32_cpu_csr_read(CSR_MZEXT));
-  neorv32_uart_print("\nPROC: ");
-  print_hex_word(SYSINFO_FEATURES);
-  neorv32_uart_print("\nIMEM: ");
-  print_hex_word(SYSINFO_IMEM_SIZE);
-  neorv32_uart_print(" bytes @ ");
-  print_hex_word(SYSINFO_ISPACE_BASE);
-  neorv32_uart_print("\nDMEM: ");
-  print_hex_word(SYSINFO_DMEM_SIZE);
-  neorv32_uart_print(" bytes @ ");
-  print_hex_word(SYSINFO_DSPACE_BASE);
 
+  // Scratch pad read back to test if works.
+  CFS_REG_0 = 0xa;
+  CFS_REG_1 = 0xb;
+  CFS_REG_2 = 0xc;
+  CFS_REG_3 = 0xd;
+  neorv32_uart_print("\ncfs 0 @ ");
+  print_hex_word(CFS_REG_0);
+  neorv32_uart_print("\ncfs 1 @ ");
+  print_hex_word(CFS_REG_1);
+  neorv32_uart_print("\ncfs 2 @ ");
+  print_hex_word(CFS_REG_2);
+  neorv32_uart_print("\ncfs 3 @ ");
+  print_hex_word(CFS_REG_3);
+
+  // Read SHA5 output
+  neorv32_uart_print("\ncfs 4 @ ");
+  print_hex_word(CFS_REG_4);
+  neorv32_uart_print("\ncfs 5 @ ");
+  print_hex_word(CFS_REG_5);
+  neorv32_uart_print("\ncfs 6 @ ");
+  print_hex_word(CFS_REG_6);
+  neorv32_uart_print("\ncfs 7 @ ");
+  print_hex_word(CFS_REG_7);
+  neorv32_uart_print("\ncfs 8 @ ");
+  print_hex_word(CFS_REG_8);
+  neorv32_uart_print("\ncfs 9 @ ");
+  print_hex_word(CFS_REG_9);
+  neorv32_uart_print("\ncfs 10 @ ");
+  print_hex_word(CFS_REG_10);
+  neorv32_uart_print("\ncfs 11 @ ");
+  print_hex_word(CFS_REG_11);
+  neorv32_uart_print("\ncfs 12 @ ");
+  print_hex_word(CFS_REG_12);
+  neorv32_uart_print("\ncfs 13 @ ");
+  print_hex_word(CFS_REG_13);
+  neorv32_uart_print("\ncfs 14 @ ");
+  print_hex_word(CFS_REG_14);
+  neorv32_uart_print("\ncfs 15 @ ");
+  print_hex_word(CFS_REG_15);
+  neorv32_uart_print("\ncfs 16 @ ");
+  print_hex_word(CFS_REG_16);
+  neorv32_uart_print("\ncfs 17 @ ");
+  print_hex_word(CFS_REG_17);
+  neorv32_uart_print("\ncfs 18 @ ");
+  print_hex_word(CFS_REG_18);
+  neorv32_uart_print("\ncfs 19 @ ");
+  print_hex_word(CFS_REG_19);
 
   // ------------------------------------------------
   // Auto boot sequence
