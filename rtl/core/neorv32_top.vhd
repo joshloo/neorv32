@@ -624,45 +624,39 @@ begin
   end generate;
 
   -- Slice word_output to 1024 bits (32 x 32 bit content) blocks for processing --
-  read_rom: process(clk_i)
-  begin
-    if falling_edge(clk_i) then
-      -- logic for SHA5 block output to CFS block
-      if (s5_finished = '1') then
-        cfs_in <= std_ulogic_vector(s5_data_out);
-      else
-        cfs_in <= (others => '1');
-      end if;
+--  read_rom: process(clk_i)
+--  begin
+--    if falling_edge(clk_i) then
+--      -- logic for ROM block output to SHA5 block input
+--      if s5_counter = 32 then
+--        s5_data_ready       <= '1';
+--        s5_counter          <= 0;
+--      else
+--        s5_data_ready       <= '0';
+--        s5_counter          <= s5_counter + 1;
+--      end if;
+--    end if;
+--  end process read_rom;
+   
+  cfs_in <= To_StdULogicVector(s5_data_out);
+  --rom_block_1024_bits <= bootloader_init_image(to_integer(unsigned(word_address(3 downto 0))));
+  rom_block_1024_bits <= (others => '1');
 
-      -- logic for ROM block output to SHA5 block input
-      if s5_counter = 32 then
-        --rom_block_1024_bits <= bootloader_init_image(to_integer(unsigned(word_address(3 downto 0))));
-        rom_block_1024_bits <= (others => '1');
-        s5_data_ready       <= '1';
-        s5_counter          <= 0;
-      else
-        rom_block_1024_bits <= (others => '0');
-        s5_data_ready       <= '0';
-        s5_counter          <= s5_counter + 1;
-      end if;
-    end if;
-  end process read_rom;
-
-   sha_512_core_inst : sha_512_core
-   generic map (
-      RESET_VALUE  => '0'
-   )
-   port map (
-       clk           => clk_i,
-       rst           => sys_rstn,
-       data_ready    => '1',
-       n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
-                                               -- boot_rom_size_c = 4*1024 bytes = 4096 bytes
-                                               -- Thus, block = 4096/128 = 32
-       msg_block_in  => rom_block_1024_bits,
-       finished     => s5_finished, -- finished will stay as finished, unless reset
-       data_out     => s5_data_out  -- output data will not be cleared, unless reset
-   );
+  sha_512_core_inst : sha_512_core
+  generic map (
+     RESET_VALUE  => '0'
+  )
+  port map (
+      clk           => clk_i,
+      rst           => sys_rstn,
+      data_ready    => s5_data_ready,
+      n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
+                                              -- boot_rom_size_c = 4*1024 bytes = 4096 bytes
+                                              -- Thus, block = 4096/128 = 32
+      msg_block_in  => rom_block_1024_bits,
+      finished     => s5_finished, -- finished will stay as finished, unless reset
+      data_out     => s5_data_out  -- output data will not be cleared, unless reset
+  );
 
   -- CPU Bus Switch -------------------------------------------------------------------------
   -- -------------------------------------------------------------------------------------------
