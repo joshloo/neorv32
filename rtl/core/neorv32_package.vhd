@@ -1808,6 +1808,7 @@ package neorv32_package is
       irq_o       : out std_ulogic; -- interrupt request
       irq_ack_i   : in  std_ulogic; -- interrupt acknowledge
       -- custom io (conduit) --
+      cfs_s5_done : in  std_ulogic;
       cfs_in_i    : in  std_ulogic_vector(CFS_IN_SIZE-1 downto 0);  -- custom inputs
       cfs_out_o   : out std_ulogic_vector(CFS_OUT_SIZE-1 downto 0)  -- custom outputs
     );

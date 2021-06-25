@@ -353,7 +353,7 @@ architecture neorv32_top_rtl of neorv32_top is
   signal s5_finished   : std_logic := '0';
   signal s5_data_ready : std_logic := '0';
   signal s5_data_out   : std_logic_vector((WORD_SIZE * 8)-1 downto 0); --SHA-512 results in a 512-bit hash value
-  signal rom_block_1024_bits   : std_logic_vector(0 to (16 * WORD_SIZE)-1); -- ROM contents structured to 64 x 16 = 1024 bits to be fed into SHA-512 block
+  signal rom_block_1024_bits   : std_logic_vector(0 to (16 * WORD_SIZE)-1) := (others => '0'); -- ROM contents structured to 64 x 16 = 1024 bits to be fed into SHA-512 block
   signal s5_counter    : natural := 0;
   signal cfs_in        : std_ulogic_vector((WORD_SIZE * 8)-1  downto 0); -- custom CFS inputs conduit
 
@@ -624,23 +624,29 @@ begin
   end generate;
 
   -- Slice word_output to 1024 bits (32 x 32 bit content) blocks for processing --
---  read_rom: process(clk_i)
---  begin
---    if falling_edge(clk_i) then
---      -- logic for ROM block output to SHA5 block input
---      if s5_counter = 32 then
---        s5_data_ready       <= '1';
---        s5_counter          <= 0;
---      else
---        s5_data_ready       <= '0';
---        s5_counter          <= s5_counter + 1;
---      end if;
---    end if;
---  end process read_rom;
-   
+  read_rom: process(clk_i)
+  begin
+    if falling_edge(clk_i) then
+      -- logic for ROM block output to SHA5 block input
+      if s5_counter = 32 then
+   --     s5_data_ready       <= '1';
+        s5_counter          <= 0;
+      else
+   --     s5_data_ready       <= '0';
+        s5_counter          <= s5_counter + 1;
+      end if;
+    end if;
+  end process read_rom;
+
+  s5_data_ready       <= '1';
   cfs_in <= To_StdULogicVector(s5_data_out);
   --rom_block_1024_bits <= bootloader_init_image(to_integer(unsigned(word_address(3 downto 0))));
-  rom_block_1024_bits <= (others => '1');
+  -- rom_block_1024_bits <= (others => '1');
+--  rom_block_1024_bits(0 to 7) <= x"61";
+--  rom_block_1024_bits(8 to 15) <= x"62";
+--  rom_block_1024_bits(16 to 23) <= x"63";
+--  rom_block_1024_bits(24 to 31) <= x"80";
+  rom_block_1024_bits <= x"6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018";
 
   sha_512_core_inst : sha_512_core
   generic map (
@@ -650,7 +656,8 @@ begin
       clk           => clk_i,
       rst           => sys_rstn,
       data_ready    => s5_data_ready,
-      n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
+      n_blocks      => 1,
+   --   n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
                                               -- boot_rom_size_c = 4*1024 bytes = 4096 bytes
                                               -- Thus, block = 4096/128 = 32
       msg_block_in  => rom_block_1024_bits,
@@ -925,6 +932,7 @@ begin
       irq_o       => cfs_irq,         -- interrupt request
       irq_ack_i   => cfs_irq_ack,     -- interrupt acknowledge
       -- custom io (conduit) --
+      cfs_s5_done => s5_finished,
       cfs_in_i    => cfs_in,        -- custom inputs
       cfs_out_o   => cfs_out_o        -- custom outputs
     );

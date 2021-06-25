@@ -275,6 +275,7 @@ int main(void) {
   print_hex_word(CFS_REG_3);
 
   // Read SHA5 output
+  neorv32_uart_print("\nSHA5 digest: ");
   neorv32_uart_print("\ncfs 4 @ ");
   print_hex_word(CFS_REG_4);
   neorv32_uart_print("\ncfs 5 @ ");

@@ -69,6 +69,7 @@ entity neorv32_cfs is
     irq_o       : out std_ulogic; -- interrupt request
     irq_ack_i   : in  std_ulogic; -- interrupt acknowledge
     -- custom io (conduits) --
+    cfs_s5_done : in  std_ulogic;
     cfs_in_i    : in  std_ulogic_vector(CFS_IN_SIZE-1 downto 0);  -- custom inputs
     cfs_out_o   : out std_ulogic_vector(CFS_OUT_SIZE-1 downto 0)  -- custom outputs
   );
@@ -279,7 +280,9 @@ begin
     cfs_reg_rd(0) <= cfs_reg_wr(0); -- using first 4 as read back scratch pad, potentially use for boot checkpoints
     cfs_reg_rd(1) <= cfs_reg_wr(1);
     cfs_reg_rd(2) <= cfs_reg_wr(2);
-    cfs_reg_rd(3) <= cfs_reg_wr(3);
+    cfs_reg_rd(3)(0) <= cfs_s5_done;
+    cfs_reg_rd(3)(30 downto 1) <= (others => '0');
+    cfs_reg_rd(3)(31) <= '1';
     cfs_reg_rd(4) <= cfs_in_i(31 downto 0);
     cfs_reg_rd(5) <= cfs_in_i(63 downto 32);
     cfs_reg_rd(6) <= cfs_in_i(95 downto 64);
