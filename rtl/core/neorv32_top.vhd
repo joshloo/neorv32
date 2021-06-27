@@ -357,6 +357,9 @@ architecture neorv32_top_rtl of neorv32_top is
   signal s5_counter    : natural := 0;
   signal cfs_in        : std_ulogic_vector((WORD_SIZE * 8)-1  downto 0); -- custom CFS inputs conduit
 
+  type SHA_512_ARBITOR_STATE is ( IDLE, SEND_DATA, TOGGLE_DATA_READY, WAIT_FOR_DONE, COMPLETE );
+  signal CURRENT_STATE, NEXT_STATE : SHA_512_ARBITOR_STATE;
+    
 begin
 
   -- Sanity Checks --------------------------------------------------------------------------
@@ -624,29 +627,76 @@ begin
   end generate;
 
   -- Slice word_output to 1024 bits (32 x 32 bit content) blocks for processing --
-  read_rom: process(clk_i)
+  -- Arbiter next state logic
+  process (CURRENT_STATE, s5_counter, s5_finished)
   begin
-    if falling_edge(clk_i) then
-      -- logic for ROM block output to SHA5 block input
-      if s5_counter = 32 then
-   --     s5_data_ready       <= '1';
-        s5_counter          <= 0;
-      else
-   --     s5_data_ready       <= '0';
-        s5_counter          <= s5_counter + 1;
-      end if;
-    end if;
-  end process read_rom;
+    case CURRENT_STATE is
+      when IDLE =>
+        if (s5_counter > 0) then
+          NEXT_STATE <= SEND_DATA;
+        else
+          NEXT_STATE <= IDLE;
+        end if;
+      when SEND_DATA =>
+        if (s5_counter < (boot_rom_size_c/128)) then
+          NEXT_STATE <= TOGGLE_DATA_READY;
+        else
+       	  NEXT_STATE <= WAIT_FOR_DONE;
+       	end if;
+      when TOGGLE_DATA_READY =>
+       	NEXT_STATE <= SEND_DATA;
+      when WAIT_FOR_DONE =>
+        if (s5_finished = '1') then
+          NEXT_STATE <= COMPLETE;
+        else
+          NEXT_STATE <= WAIT_FOR_DONE;
+        end if;
+      when COMPLETE =>
+        NEXT_STATE <= COMPLETE;
+    end case;
+  end process;
 
-  s5_data_ready       <= '1';
-  cfs_in <= To_StdULogicVector(s5_data_out);
+  -- Arbiter current state logic
+  process (clk_i, sys_rstn)
+  begin
+    if (sys_rstn = '0') then
+      CURRENT_STATE <= IDLE;
+    elsif rising_edge(clk_i) then
+      CURRENT_STATE <= NEXT_STATE;
+    end if;
+  end process;
+
+  -- Arbiter state output logic
+  read_rom: process (clk_i, sys_rstn, CURRENT_STATE)
+  begin
+    if (sys_rstn = '0') then
+      s5_data_ready <= '0';
+      s5_counter <= 0;
+      cfs_in <= (others => '1');
+      rom_block_1024_bits <= (others => '0');
+    elsif rising_edge(clk_i) then
+      case CURRENT_STATE is
+        when IDLE =>
+          s5_data_ready <= '0';
+          s5_counter <= 0;
+        when SEND_DATA =>
+          s5_data_ready <= '1';
+          rom_block_1024_bits <= to_stdlogicvector(to_integer(unsigned(s5_data_out(3 downto 0))));
+         -- rom_block_1024_bits <= (others => '0');
+        when TOGGLE_DATA_READY =>
+          s5_data_ready <= '0';
+          s5_counter <= s5_counter + 1;
+        when WAIT_FOR_DONE =>
+          s5_data_ready <= '0';
+        when COMPLETE =>
+          cfs_in <= To_StdULogicVector(s5_data_out);
+      end case;
+    end if;
+  end process;
+
+
   --rom_block_1024_bits <= bootloader_init_image(to_integer(unsigned(word_address(3 downto 0))));
-  -- rom_block_1024_bits <= (others => '1');
---  rom_block_1024_bits(0 to 7) <= x"61";
---  rom_block_1024_bits(8 to 15) <= x"62";
---  rom_block_1024_bits(16 to 23) <= x"63";
---  rom_block_1024_bits(24 to 31) <= x"80";
-  rom_block_1024_bits <= x"6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018";
+  -- rom_block_1024_bits <= x"6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018";
 
   sha_512_core_inst : sha_512_core
   generic map (
@@ -656,8 +706,8 @@ begin
       clk           => clk_i,
       rst           => sys_rstn,
       data_ready    => s5_data_ready,
-      n_blocks      => 1,
-   --   n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
+   --   n_blocks      => 1,
+      n_blocks      => (boot_rom_size_c/128), -- the block is in unit of 1024 bits = 128 bytes
                                               -- boot_rom_size_c = 4*1024 bytes = 4096 bytes
                                               -- Thus, block = 4096/128 = 32
       msg_block_in  => rom_block_1024_bits,
